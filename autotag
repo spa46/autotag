@@ -1,0 +1,49 @@
+#!/bin/bash/python3
+
+import os, sys, re
+from git import Repo, InvalidGitRepositoryError
+import argparse
+
+# autotag format:
+#   vMajor.Minor.Patch
+
+
+def parser():
+    parser = argparse.ArgumentParser(description='git auto tag')
+
+    parser.add_argument('-T', '--pre-release-timestamp', help='create pre-release tag with time stamp')
+    parser.add_argument('-p', '--pre-release-name', help='create pre-release tag with this name',
+                        choices=['alpha', 'beta', 'rc', 'pre', 'hotfix'])
+    parser.add_argument('-n', help='dry-run', action='store_true')
+
+    args = parser.parse_args()
+
+    return args
+
+def get_git_repo():
+    try:
+        repo = Repo(search_parent_directories=True)
+    except InvalidGitRepositoryError:
+        print('Not on git repo...')
+        sys.exit(127)
+
+    return repo
+
+def fn(v):
+    pass
+
+def get_main_tags(repo):
+    tags = map(lambda v: str(v), repo.tags)
+    r = re.compile('^v[0-9]+\.[0-9]+\.[0-9]+$')
+    tags = list(filter(r.match, tags))
+    print(tags)
+    return tags
+
+
+args = parser()
+repo = get_git_repo()
+main_tags = get_main_tags(repo)
+
+# changelog
+# git for-each-ref --sort=taggerdate --format '%(refname) %(taggerdate)' refs/tags
+
