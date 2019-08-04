@@ -1,8 +1,10 @@
 #!/bin/bash/python3
 
 import os, sys, re
-from git import Repo, InvalidGitRepositoryError
+import time
+from datetime import datetime
 import argparse
+from git import Repo, InvalidGitRepositoryError
 
 # autotag format:
 #   vMajor.Minor.Patch
@@ -11,14 +13,25 @@ import argparse
 def parser():
     parser = argparse.ArgumentParser(description='git auto tag')
 
-    parser.add_argument('-T', '--pre-release-timestamp', help='create pre-release tag with time stamp')
+    parser.add_argument('-T', '--pre-release-timestamp', help='create pre-release tag with time stamp',
+                        choices=['epoch', 'datetime'])
     parser.add_argument('-p', '--pre-release-name', help='create pre-release tag with this name',
                         choices=['alpha', 'beta', 'rc', 'pre', 'hotfix'])
-    parser.add_argument('-n', help='dry-run', action='store_true')
+
+    parser.add_argument('--major', help='', action='store_true')
+    parser.add_argument('--minor', help='', action='store_true')
+    parser.add_argument('-f', help='force increment version', action='store_true')
 
     args = parser.parse_args()
 
     return args
+
+def check_args_validity(myargs):
+    if myargs.major and myargs.minor:
+        print('Invalid Option, must be either major or minor. Terminates..')
+        return False
+
+    return True
 
 def get_git_repo():
     try:
@@ -29,20 +42,81 @@ def get_git_repo():
 
     return repo
 
-def fn(v):
-    pass
 
 def get_main_tags(repo):
     tags = map(lambda v: str(v), repo.tags)
     r = re.compile('^v[0-9]+\.[0-9]+\.[0-9]+$')
     tags = list(filter(r.match, tags))
-    print(tags)
+    # print(tags)
     return tags
+
+
+def get_timestamp(pre_timestamp):
+    ts = 0
+    if pre_timestamp == 'epoch':
+        ts = int(time.time())
+    elif pre_timestamp == 'datetime':
+        ts = datetime.now().strftime('%Y%m%d%H%m%S')
+    else:
+        print('invalid logic'); sys.exit(127)
+
+    return ts
+
+
+def pre_release(name, timestamp):
+    ext_name = ''
+
+    if name and timestamp:
+        ext_name = name + '.' + get_timestamp(timestamp)
+    elif name:
+        ext_name = name
+    elif timestamp:
+        ext_name = get_timestamp(timestamp)
+
+    return ext_name
+
+
+def next_release_version(tag_name):
+    tnums = tag_name[1:].split('.')
+    major_num, minor_num, patch_num = int(tnums[0]), int(tnums[1]), int(tnums[2])
+
+    if args.major:
+        major_num += 1
+        minor_num = 0
+        patch_num = 0
+    elif args.minor:
+        minor_num += 1
+        patch_num = 0
+    else:
+        patch_num += 1
+
+    version = 'v' + str(major_num) + '.' + str(minor_num) + '.' + str(patch_num)
+    print(version)
+
+    return version
 
 
 args = parser()
 repo = get_git_repo()
 main_tags = get_main_tags(repo)
+latest_tag_name = main_tags[-1]
+
+if not check_args_validity(args):
+    sys.exit(127)
+
+pre_name = args.pre_release_name
+pre_timestamp = args.pre_release_timestamp
+
+pre_fullname = pre_release(pre_name, pre_timestamp)
+pre_tag = latest_tag_name + '-' + pre_fullname
+
+if pre_fullname:
+    repo.create_tag(pre_tag, message='pre-release tag "{0}"'.format(pre_tag))
+    sys.exit(0)
+
+next_tag = next_release_version(latest_tag_name)
+if args.f:
+    repo.create_tag(next_tag, message='auto tag "{0}"'.format(next_tag))
 
 # changelog
 # git for-each-ref --sort=taggerdate --format '%(refname) %(taggerdate)' refs/tags
