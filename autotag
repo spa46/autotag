@@ -76,6 +76,11 @@ def pre_release(name, timestamp):
     return ext_name
 
 
+def compare_tag_head(tag):
+    print(repo.tags[-1].commit)
+    print(tag)
+    sys.exit(127)
+
 def next_release_version(tag_name):
     tnums = tag_name[1:].split('.')
     major_num, minor_num, patch_num = int(tnums[0]), int(tnums[1]), int(tnums[2])
@@ -114,6 +119,7 @@ if pre_fullname:
     repo.create_tag(pre_tag, message='pre-release tag "{0}"'.format(pre_tag))
     sys.exit(0)
 
+compare_tag_head(latest_tag_name)
 next_tag = next_release_version(latest_tag_name)
 if args.f:
     repo.create_tag(next_tag, message='auto tag "{0}"'.format(next_tag))
