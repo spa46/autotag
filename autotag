@@ -20,7 +20,6 @@ def parser():
 
     parser.add_argument('--major', help='', action='store_true')
     parser.add_argument('--minor', help='', action='store_true')
-    parser.add_argument('-f', help='force increment version', action='store_true')
 
     args = parser.parse_args()
 
@@ -76,29 +75,39 @@ def pre_release(name, timestamp):
     return ext_name
 
 
-def compare_tag_head(tag):
-    print(repo.tags[-1].commit)
-    print(tag)
-    sys.exit(127)
+def check_head_for_update(tag_name):
+    tag_commit_id = repo.commit(tag_name)
+    branch_head_commit_id = repo.commit('master')
+
+    print('latest tag: {0} ({1})'.format(tag_name, tag_commit_id))
+
+    if tag_commit_id == branch_head_commit_id:
+        return False
+
+    return True
 
 def next_release_version(tag_name):
     tnums = tag_name[1:].split('.')
     major_num, minor_num, patch_num = int(tnums[0]), int(tnums[1]), int(tnums[2])
+    msg = ''
 
     if args.major:
         major_num += 1
         minor_num = 0
         patch_num = 0
+        msg = 'major'
     elif args.minor:
         minor_num += 1
         patch_num = 0
+        msg = 'minor'
     else:
         patch_num += 1
+        msg = 'patch'
 
-    version = 'v' + str(major_num) + '.' + str(minor_num) + '.' + str(patch_num)
-    print(version)
+    new_tag = 'v' + str(major_num) + '.' + str(minor_num) + '.' + str(patch_num)
+    print('   new tag: {0} ({1})\t({2} version updates)'.format(new_tag, repo.commit('master'), msg), end='\n\n')
 
-    return version
+    return new_tag
 
 
 args = parser()
@@ -119,10 +128,13 @@ if pre_fullname:
     repo.create_tag(pre_tag, message='pre-release tag "{0}"'.format(pre_tag))
     sys.exit(0)
 
-compare_tag_head(latest_tag_name)
+if not check_head_for_update(latest_tag_name):
+    print('There are No Updates. Auto tagging NOT necessary. Exit')
+    sys.exit(0)
+
 next_tag = next_release_version(latest_tag_name)
-if args.f:
-    repo.create_tag(next_tag, message='auto tag "{0}"'.format(next_tag))
+repo.create_tag(next_tag, message='auto tag "{0}"'.format(next_tag))
+print('new tag <', next_tag, '> is created.', )
 
 # changelog
 # git for-each-ref --sort=taggerdate --format '%(refname) %(taggerdate)' refs/tags
