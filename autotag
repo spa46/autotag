@@ -113,6 +113,11 @@ def next_release_version(tag_name):
 args = parser()
 repo = get_git_repo()
 main_tags = get_main_tags(repo)
+
+if not main_tags:
+    print('There are no Tags.. exit')
+    sys.exit(127)
+
 latest_tag_name = main_tags[-1]
 
 if not check_args_validity(args):
