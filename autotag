@@ -20,6 +20,7 @@ def parser():
 
     parser.add_argument('--major', help='', action='store_true')
     parser.add_argument('--minor', help='', action='store_true')
+    parser.add_argument('--ignore_redundant', help='', action='store_true')
 
     args = parser.parse_args()
 
@@ -133,7 +134,7 @@ if pre_fullname:
     repo.create_tag(pre_tag, message='pre-release tag "{0}"'.format(pre_tag))
     sys.exit(0)
 
-if not check_head_for_update(latest_tag_name):
+if args.ignore_redundant and not check_head_for_update(latest_tag_name):
     print('There are No Updates. Auto tagging NOT necessary. Exit')
     sys.exit(0)
 
